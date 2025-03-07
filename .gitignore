@@ -37,3 +37,7 @@ _templates
 # Misc
 .DS_Store
 *.mo
+
+config.py
+db_command.md
+/data/
