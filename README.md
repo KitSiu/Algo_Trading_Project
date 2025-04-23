@@ -1,14 +1,8 @@
-# Algo_Trading_Project
-Project of MFE5210
+# Algo_Trading_Project MFE5210
 
 项目介绍：基于vnpy框架开发的Tick级别中国商品期货回测系统，支持多策略动态参数配置、实时进度展示和可视化分析。
 
-## 文件结构
-project-root
- - dolphindb_tick_feed.py # DolphinDB数据连接模块
- - strategies.py # 策略实现模块
- - tick_backtest_gui.py # 图形化回测界面主程序
- - config.py # 数据库配置
+[点击观看回测演示](https://owyenliu.github.io/video-demo/)
 
 ## 环境配置
 - 一键安装：https://download.vnpy.com/veighna_studio-3.9.4.exe
@@ -19,6 +13,13 @@ F:\VeighNa\python.exe -m pip install ipykernel
 F:\VeighNa\python.exe -m ipykernel install --user --name veighna --display-name "Python (VeighNa)"
 启动jupyter notebook 在右上角change kernel选择"Python (VeighNa)"
 ```
+
+## 文件结构
+project-root
+ - dolphindb_tick_feed.py # DolphinDB数据连接模块
+ - strategies.py # 策略实现模块
+ - tick_backtest_gui.py # 图形化回测界面主程序
+ - config.py # 数据库配置
 
 ### 阶段1：数据获取与处理
 - 期货的tick数据2010.01-2024.12，来自聚宽
