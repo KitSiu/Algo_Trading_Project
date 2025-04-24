@@ -1,7 +1,11 @@
 import sys
-from plotly.io import to_html
 from datetime import datetime
 import numpy as np
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib
+matplotlib.rcParams['font.sans-serif'] = ['SimHei']  # 黑体
+matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QLineEdit, QDateTimeEdit, QPushButton, QCheckBox,
@@ -16,8 +20,6 @@ from vnpy_ctastrategy.base import BacktestingMode
 from dolphindb_tick_feed import DolphinDBTickFeed
 from strategies import DynamicTickDoubleMaStrategy, MacdDivergenceTickStrategy, TickDynamicBollChannelStrategy
 import plotly.graph_objects as go
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWebEngineCore import QWebEngineSettings
 from config import *
 
 STAT_TRANSLATIONS = {
@@ -319,16 +321,14 @@ class BacktestGUI(QMainWindow):
         # 右侧图表区域
         chart_group = QGroupBox("分析图表")
         chart_splitter = QSplitter(Qt.Vertical)
-        # 创建四个Web视图并设置尺寸策略
-        self.chart_views = []
+
+        # 右侧：四个 Matplotlib 画布
+        self.canvases = []
         for _ in range(4):
-            view = QWebEngineView()
-            view.setMinimumHeight(300)
-            view.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
-            view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
-            view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            chart_splitter.addWidget(view)
-            self.chart_views.append(view)
+            fig = Figure(figsize=(4, 3))
+            canvas = FigureCanvas(fig)
+            chart_splitter.addWidget(canvas)
+            self.canvases.append((fig, canvas))
 
         chart_layout = QVBoxLayout()
         chart_layout.addWidget(chart_splitter)
@@ -429,23 +429,50 @@ class BacktestGUI(QMainWindow):
             self.stats_table.setItem(row, 0, QTableWidgetItem(cn_key))
             self.stats_table.setItem(row, 1, QTableWidgetItem(str(value)))
 
-        figs = [
-            create_balance_fig(df),
-            create_drawdown_fig(df),
-            create_daily_pnl_fig(df),
-            create_pnl_distribution_fig(df)
-        ]
+        # 图1: 账户净值
+        fig, canvas = self.canvases[0]
+        fig.clear()
+        ax = fig.add_subplot(111)
+        ax.plot(df.index, df['balance'])
+        ax.set_title('账户净值')
+        ax.set_xlabel('日期')  # x轴标注
+        ax.set_ylabel('资金')  # y轴标注
+        # 优化 x 轴日期显示，不要太密集
+        fig.autofmt_xdate(rotation=30)
+        canvas.draw()
 
-        # 渲染到四个视图
-        for i, fig in enumerate(figs):
-            html = to_html(fig, full_html=False, include_plotlyjs='cdn')
-            full_html = f"""
-                <html>
-                    <head><meta charset="utf-8"></head>
-                    <body style="margin:0">{html}</body>
-                </html>
-                """
-            self.chart_views[i].setHtml(full_html)
+        # 图2: 净值回撤
+        fig, canvas = self.canvases[1]
+        fig.clear()
+        ax = fig.add_subplot(111)
+        ax.fill_between(df.index, df['drawdown'], color='red', alpha=0.3)
+        ax.set_title('净值回撤')
+        ax.set_xlabel('日期')
+        ax.set_ylabel('回撤')
+        fig.autofmt_xdate(rotation=30)
+        canvas.draw()
+
+        # 图3: 每日盈亏
+        fig, canvas = self.canvases[2]
+        fig.clear()
+        ax = fig.add_subplot(111)
+        colors = ['g' if x >= 0 else 'r' for x in df['net_pnl']]
+        ax.bar(df.index, df['net_pnl'], color=colors)
+        ax.set_title('每日盈亏')
+        ax.set_xlabel('日期')
+        ax.set_ylabel('盈亏')
+        fig.autofmt_xdate(rotation=30)
+        canvas.draw()
+
+        # 图4: 盈亏分布
+        fig, canvas = self.canvases[3]
+        fig.clear()
+        ax = fig.add_subplot(111)
+        ax.hist(df['net_pnl'], bins=50)
+        ax.set_title('盈亏分布')
+        ax.set_xlabel('盈亏金额')
+        ax.set_ylabel('频次')
+        canvas.draw()
 
         # 更新统计表格
         self.stats_table.setRowCount(len(stats))
